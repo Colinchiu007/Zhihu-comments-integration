@@ -1,6 +1,8 @@
 import argparse
 import sys
+import re
 from pathlib import Path
+from datetime import datetime
 
 # 添加src到路径
 sys.path.insert(0, str(Path(__file__).parent / 'src'))
@@ -12,13 +14,23 @@ from rewriter.comment_rewriter import CommentRewriter, RewriteConfig
 from data.storage import DataStorage
 
 
+def sanitize_filename(title: str) -> str:
+    """清理文件名中的非法字符"""
+    # 移除或替换非法字符
+    title = re.sub(r'[<>:"/\\|?*]', '', title)
+    # 限制长度
+    if len(title) > 50:
+        title = title[:50]
+    return title.strip()
+
+
 def main():
     parser = argparse.ArgumentParser(description='知乎评论整合工具')
     parser.add_argument('--url', required=True, help='知乎链接')
-    parser.add_argument('--output', default='output.md', help='分析报告输出文件')
+    parser.add_argument('--output', default=None, help='分析报告输出文件（默认：标题-日期.md）')
     parser.add_argument('--max-comments', type=int, default=50, help='最大评论数')
     parser.add_argument('--rewrite', action='store_true', help='生成改写文案')
-    parser.add_argument('--rewrite-output', default='rewritten.md', help='改写文案输出文件')
+    parser.add_argument('--rewrite-output', default=None, help='改写文案输出文件（默认：标题-日期.md）')
     parser.add_argument('--max-words', type=int, default=2000, help='改写文案最大字数')
     parser.add_argument('--strategy', choices=['auto', '评论为主', '原文为主', '均衡'], 
                        default='auto', help='改写策略')
@@ -56,14 +68,26 @@ def main():
     analysis = analyzer.analyze(comments)
     print(f'  分析完成: {analysis["summary"][:50]}')
     
+    # 从原文或分析中获取标题
+    title = '知乎讨论'
+    if data.get('original'):
+        title = data['original'].get('question_title', title)
+    analysis['title'] = title
+    
+    # 生成文件名
+    date_str = datetime.now().strftime('%Y%m%d')
+    safe_title = sanitize_filename(title)
+    default_filename = f'{safe_title}-{date_str}.md'
+    
     # 3. 生成分析报告
     print('\n[3/5] 生成分析报告...')
     generator = ArticleGenerator()
     article = generator.generate(analysis)
     
-    with open(args.output, 'w', encoding='utf-8') as f:
+    output_file = args.output or default_filename
+    with open(output_file, 'w', encoding='utf-8') as f:
         f.write(article)
-    print(f'  分析报告已保存: {args.output}')
+    print(f'  分析报告已保存: {output_file}')
     
     # 4. 生成改写文案（可选）
     if args.rewrite:
@@ -81,9 +105,10 @@ def main():
         
         rewritten = rewriter.rewrite(original, comments, analysis)
         
-        with open(args.rewrite_output, 'w', encoding='utf-8') as f:
+        rewrite_file = args.rewrite_output or f'改写-{default_filename}'
+        with open(rewrite_file, 'w', encoding='utf-8') as f:
             f.write(rewritten)
-        print(f'  改写文案已保存: {args.rewrite_output}')
+        print(f'  改写文案已保存: {rewrite_file}')
     else:
         print('\n[4/5] 跳过改写文案（使用 --rewrite 启用）')
     
@@ -102,9 +127,9 @@ def main():
     
     print(f'\n{"="*50}')
     print(f'完成!')
-    print(f'  - 分析报告: {args.output}')
+    print(f'  - 分析报告: {output_file}')
     if args.rewrite:
-        print(f'  - 改写文案: {args.rewrite_output}')
+        print(f'  - 改写文案: {rewrite_file}')
     if args.save:
         print(f'  - 数据目录: {args.data_dir}')
 

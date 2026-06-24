@@ -44,6 +44,9 @@ class CommentRewriter:
         
         for comment in comments:
             content = self._clean_html(comment.get('content', ''))
+            if not content:
+                continue
+                
             sentiment = comment.get('sentiment', 0.5)
             
             if sentiment > 0.6:
@@ -79,53 +82,37 @@ class CommentRewriter:
         key_points = self._extract_key_points(comments)
         comment_count = len(comments)
         
-        # 开头
+        # 获取标题
         title = analysis.get('title', '话题讨论')
         summary = analysis.get('summary', '')
         
-        lines = []
-        lines.append(f'# {title} - 深度解读')
-        lines.append('')
-        
-        # 原文摘要
-        if original:
-            lines.append('## 原文概述')
-            lines.append('')
-            original_clean = self._clean_html(original)
-            if len(original_clean) > 500:
-                original_clean = original_clean[:500] + '...'
-            lines.append(original_clean)
-            lines.append('')
-        
         # 根据策略生成正文
+        lines = []
+        
         if strategy == '评论为主':
-            lines.append('## 网友热议')
-            lines.append('')
-            lines.append(f'该话题共收到 **{comment_count}** 条评论，以下是网友们的主要观点：')
+            lines.append(f'## {title}')
             lines.append('')
             
             if key_points['positive']:
-                lines.append('### 正面观点')
+                lines.append('多数网友对此持肯定态度：')
                 lines.append('')
                 for point in key_points['positive']:
                     lines.append(f'- {point}')
                 lines.append('')
             
             if key_points['negative']:
-                lines.append('### 质疑声音')
+                lines.append('也有部分网友提出不同看法：')
                 lines.append('')
                 for point in key_points['negative']:
                     lines.append(f'- {point}')
                 lines.append('')
             
             if key_points['themes']:
-                lines.append('### 热议话题')
-                lines.append('')
-                lines.append('、'.join(key_points['themes']))
+                lines.append(f'讨论主要围绕{"、".join(key_points["themes"])}展开。')
                 lines.append('')
         
         elif strategy == '原文为主':
-            lines.append('## 内容解读')
+            lines.append(f'## {title}')
             lines.append('')
             
             if original:
@@ -134,7 +121,9 @@ class CommentRewriter:
                 lines.append('')
             
             if comments:
-                lines.append('## 评论区精选')
+                lines.append('---')
+                lines.append('')
+                lines.append('**网友评论精选：**')
                 lines.append('')
                 for comment in comments[:10]:
                     content = self._clean_html(comment.get('content', ''))
@@ -143,17 +132,16 @@ class CommentRewriter:
                         lines.append('')
         
         else:  # 均衡
-            lines.append('## 内容概要')
+            lines.append(f'## {title}')
             lines.append('')
+            
             if original:
                 original_clean = self._clean_html(original)
                 if len(original_clean) > 300:
                     original_clean = original_clean[:300] + '...'
                 lines.append(original_clean)
-            lines.append('')
+                lines.append('')
             
-            lines.append('## 网友观点')
-            lines.append('')
             if key_points['positive']:
                 lines.append('**赞同的声音：**')
                 for point in key_points['positive'][:3]:
@@ -166,17 +154,34 @@ class CommentRewriter:
                     lines.append(f'- {point}')
                 lines.append('')
         
-        # 总结
-        lines.append('## 总结')
-        lines.append('')
-        lines.append(summary if summary else '该话题引发了广泛讨论，网友们从不同角度表达了自己的看法。')
-        lines.append('')
+        # 字数控制 - 在生成时就控制，不截断
+        result = '\n'.join(lines)
         
-        # 标注
-        lines.append('---')
-        lines.append(f'*本文基于{comment_count}条网友评论自动改写生成，仅供参考。*')
+        # 如果超长，精简内容
+        if len(result) > self.config.max_words:
+            result = self._trim_content(lines, self.config.max_words)
         
-        return '\n'.join(lines)
+        return result
+    
+    def _trim_content(self, lines: List[str], max_words: int) -> str:
+        """精简内容到指定字数"""
+        result = '\n'.join(lines)
+        
+        # 如果还是超长，逐步精简
+        if len(result) > max_words:
+            # 保留标题和前半部分
+            trimmed_lines = []
+            current_len = 0
+            
+            for line in lines:
+                if current_len + len(line) + 1 > max_words - 50:
+                    break
+                trimmed_lines.append(line)
+                current_len += len(line) + 1
+            
+            result = '\n'.join(trimmed_lines)
+        
+        return result
     
     def rewrite(self, original: str, comments: List[Dict[str, Any]], 
                 analysis: Dict[str, Any]) -> str:
@@ -195,10 +200,6 @@ class CommentRewriter:
         strategy = self._determine_strategy(comment_count)
         
         result = self._generate_rewrite(original, comments, analysis, strategy)
-        
-        # 字数控制
-        if len(result) > self.config.max_words:
-            result = result[:self.config.max_words - 20] + '\n\n...(内容已截断)'
         
         return result
 

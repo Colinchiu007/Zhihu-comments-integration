@@ -22,22 +22,19 @@ venv/
 # 输出文件
 output.md
 test_output.md
+test_new.md
+test_new_rewrite.md
 test_zhihu.md
 test_restructured.md
 test_rewrite.md
 rewritten.md
 comments.json
 
-# 临时文件
-*.log
-scraper.log
-page_debug.html
-zhihu_page*.html
-debug_state.png
-after_click_comment.png
-api_requests.json
+# 知乎讨论输出
+*讨论*.md
+*改写*.md
 
-# 调试脚本
+# 调试文件
 capture_api*.py
 check_*.py
 debug_*.py
@@ -52,6 +49,14 @@ no_proxy.py
 parse_html.py
 quick_login.py
 smart_login.py
+
+# 临时文件
+page_debug.html
+zhihu_page*.html
+debug_state.png
+after_click_comment.png
+api_requests.json
+scraper.log
 
 # IDE
 .vscode/

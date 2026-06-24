@@ -94,6 +94,32 @@ class TestCommentRewriter:
         result = rewriter.rewrite(original, comments, analysis)
         assert '测试话题' in result
         assert '很好的观点' in result
+    
+    def test_rewrite_auto_strategy(self):
+        """测试自动策略选择"""
+        config = RewriteConfig(max_words=2000, strategy='auto')
+        rewriter = CommentRewriter(config)
+        
+        # 评论少于20条，使用原文为主
+        comments_short = [{'content': f'评论{i}', 'sentiment': 0.5} for i in range(10)]
+        result = rewriter.rewrite('原文内容', comments_short, {'title': '测试'})
+        assert '原文内容' in result
+        
+        # 评论多于20条，使用评论为主
+        comments_long = [{'content': f'评论{i}', 'sentiment': 0.5} for i in range(25)]
+        result = rewriter.rewrite('原文内容', comments_long, {'title': '测试'})
+        assert '网友' in result or '评论' in result
+    
+    def test_clean_html(self):
+        """测试HTML清理"""
+        config = RewriteConfig()
+        rewriter = CommentRewriter(config)
+        
+        html_content = '<p>这是一段<b>带HTML</b>的文本</p>'
+        result = rewriter._clean_html(html_content)
+        assert '<p>' not in result
+        assert '<b>' not in result
+        assert '这是一段带HTML的文本' in result
 
 
 class TestDataStorage:
