@@ -9,6 +9,7 @@ from scraper.zhihu_api import ZhihuAPI
 from analyzer.comment_analyzer import CommentAnalyzer
 from generator.article_generator import ArticleGenerator
 from rewriter.comment_rewriter import CommentRewriter, RewriteConfig
+from data.storage import DataStorage
 
 
 def main():
@@ -21,6 +22,8 @@ def main():
     parser.add_argument('--max-words', type=int, default=2000, help='改写文案最大字数')
     parser.add_argument('--strategy', choices=['auto', '评论为主', '原文为主', '均衡'], 
                        default='auto', help='改写策略')
+    parser.add_argument('--save', action='store_true', help='保存原文和评论到文件')
+    parser.add_argument('--data-dir', default='data', help='数据保存目录')
     
     args = parser.parse_args()
     
@@ -29,26 +32,32 @@ def main():
     if args.rewrite:
         print(f'改写策略: {args.strategy}')
         print(f'改写字数上限: {args.max_words}')
+    if args.save:
+        print(f'数据保存目录: {args.data_dir}')
     print('='*50)
     
-    # 1. 抓取评论
-    print('\n[1/4] 抓取评论...')
+    # 1. 抓取内容
+    print('\n[1/5] 抓取内容...')
     api = ZhihuAPI()
-    comments = api.scrape(args.url, max_comments=args.max_comments)
+    data = api.scrape(args.url, max_comments=args.max_comments, include_original=args.save)
+    comments = data.get('comments', [])
     print(f'  抓取到 {len(comments)} 条评论')
+    
+    if args.save and data.get('original'):
+        print(f'  已获取原文: {data["original"].get("question_title", "")[:30]}...')
     
     if not comments:
         print('未获取到评论，退出')
         return
     
     # 2. 分析评论
-    print('\n[2/4] 分析评论...')
+    print('\n[2/5] 分析评论...')
     analyzer = CommentAnalyzer()
     analysis = analyzer.analyze(comments)
     print(f'  分析完成: {analysis["summary"][:50]}')
     
     # 3. 生成分析报告
-    print('\n[3/4] 生成分析报告...')
+    print('\n[3/5] 生成分析报告...')
     generator = ArticleGenerator()
     article = generator.generate(analysis)
     
@@ -58,15 +67,17 @@ def main():
     
     # 4. 生成改写文案（可选）
     if args.rewrite:
-        print('\n[4/4] 生成改写文案...')
+        print('\n[4/5] 生成改写文案...')
         config = RewriteConfig(
             max_words=args.max_words,
             strategy=args.strategy
         )
         rewriter = CommentRewriter(config)
         
-        # 获取原文（从API响应中）
-        original = ''  # TODO: 从API获取原文
+        # 获取原文内容
+        original = ''
+        if data.get('original'):
+            original = data['original'].get('content', '')
         
         rewritten = rewriter.rewrite(original, comments, analysis)
         
@@ -74,13 +85,28 @@ def main():
             f.write(rewritten)
         print(f'  改写文案已保存: {args.rewrite_output}')
     else:
-        print('\n[4/4] 跳过改写文案（使用 --rewrite 启用）')
+        print('\n[4/5] 跳过改写文案（使用 --rewrite 启用）')
+    
+    # 5. 保存数据（可选）
+    if args.save:
+        print('\n[5/5] 保存数据...')
+        storage = DataStorage(args.data_dir)
+        file_path = storage.save_answer(data)
+        print(f'  数据已保存: {file_path}')
+        
+        # 显示统计
+        stats = storage.get_statistics()
+        print(f'  存储统计: {stats["total_answers"]}条回答, {stats["total_comments"]}条评论')
+    else:
+        print('\n[5/5] 跳过数据保存（使用 --save 启用）')
     
     print(f'\n{"="*50}')
     print(f'完成!')
     print(f'  - 分析报告: {args.output}')
     if args.rewrite:
         print(f'  - 改写文案: {args.rewrite_output}')
+    if args.save:
+        print(f'  - 数据目录: {args.data_dir}')
 
 
 if __name__ == '__main__':

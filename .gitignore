@@ -3,6 +3,9 @@ config/cookie.txt
 config/cookies.json
 config/proxies.json
 
+# 数据目录（仅排除根目录下的data）
+/data/
+
 # Python
 *.pyc
 __pycache__/
@@ -22,6 +25,7 @@ test_output.md
 test_zhihu.md
 test_restructured.md
 test_rewrite.md
+rewritten.md
 comments.json
 
 # 临时文件

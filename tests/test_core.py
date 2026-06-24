@@ -1,6 +1,7 @@
 """单元测试"""
 import pytest
 import sys
+import shutil
 from pathlib import Path
 
 # 添加src到路径
@@ -10,6 +11,7 @@ from scraper.zhihu_api import ZhihuAPI
 from analyzer.comment_analyzer import CommentAnalyzer
 from generator.article_generator import ArticleGenerator
 from rewriter.comment_rewriter import CommentRewriter, RewriteConfig
+from data.storage import DataStorage
 
 
 class TestZhihuAPI:
@@ -92,6 +94,77 @@ class TestCommentRewriter:
         result = rewriter.rewrite(original, comments, analysis)
         assert '测试话题' in result
         assert '很好的观点' in result
+
+
+class TestDataStorage:
+    def setup_method(self):
+        """测试前清理"""
+        self.test_dir = Path('test_data_storage')
+        if self.test_dir.exists():
+            shutil.rmtree(self.test_dir)
+    
+    def teardown_method(self):
+        """测试后清理"""
+        if self.test_dir.exists():
+            shutil.rmtree(self.test_dir)
+    
+    def test_save_and_load(self):
+        storage = DataStorage(str(self.test_dir))
+        
+        test_data = {
+            'question_id': '123456',
+            'answer_id': '789012',
+            'url': 'https://www.zhihu.com/question/123456/answer/789012',
+            'original': {'content': '测试原文', 'author': '测试作者'},
+            'comments': [
+                {'author': '用户1', 'content': '评论1'},
+                {'author': '用户2', 'content': '评论2'}
+            ],
+            'scraped_at': '2026-01-01T00:00:00'
+        }
+        
+        # 保存
+        file_path = storage.save_answer(test_data)
+        assert Path(file_path).exists()
+        
+        # 加载
+        loaded = storage.load_answer('123456', '789012')
+        assert loaded is not None
+        assert loaded['answer_id'] == '789012'
+        assert len(loaded['comments']) == 2
+    
+    def test_list_answers(self):
+        storage = DataStorage(str(self.test_dir))
+        
+        # 保存两个回答
+        for i in range(2):
+            test_data = {
+                'question_id': '123456',
+                'answer_id': f'78901{i}',
+                'url': f'https://www.zhihu.com/question/123456/answer/78901{i}',
+                'comments': [{'author': '用户', 'content': f'评论{i}'}],
+                'scraped_at': '2026-01-01T00:00:00'
+            }
+            storage.save_answer(test_data)
+        
+        # 列出
+        answers = storage.list_answers('123456')
+        assert len(answers) == 2
+    
+    def test_statistics(self):
+        storage = DataStorage(str(self.test_dir))
+        
+        test_data = {
+            'question_id': '123456',
+            'answer_id': '789012',
+            'comments': [{'author': '用户', 'content': '评论'}] * 5,
+            'scraped_at': '2026-01-01T00:00:00'
+        }
+        storage.save_answer(test_data)
+        
+        stats = storage.get_statistics()
+        assert stats['total_answers'] == 1
+        assert stats['total_comments'] == 5
 
 
 if __name__ == '__main__':
