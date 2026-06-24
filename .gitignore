@@ -20,6 +20,8 @@ venv/
 output.md
 test_output.md
 test_zhihu.md
+test_restructured.md
+test_rewrite.md
 comments.json
 
 # 临时文件

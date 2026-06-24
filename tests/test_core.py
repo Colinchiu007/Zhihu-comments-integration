@@ -9,6 +9,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 from scraper.zhihu_api import ZhihuAPI
 from analyzer.comment_analyzer import CommentAnalyzer
 from generator.article_generator import ArticleGenerator
+from rewriter.comment_rewriter import CommentRewriter, RewriteConfig
 
 
 class TestZhihuAPI:
@@ -58,6 +59,39 @@ class TestArticleGenerator:
         }
         result = generator.generate(analysis)
         assert '测试摘要' in result
+
+
+class TestCommentRewriter:
+    def test_config_default(self):
+        config = RewriteConfig()
+        assert config.max_words == 2000
+        assert config.strategy == 'auto'
+        assert config.focus_threshold == 20
+    
+    def test_determine_strategy(self):
+        config = RewriteConfig(strategy='auto')
+        rewriter = CommentRewriter(config)
+        
+        # 评论数少于阈值，应返回"原文为主"
+        assert rewriter._determine_strategy(10) == '原文为主'
+        
+        # 评论数多于阈值，应返回"评论为主"
+        assert rewriter._determine_strategy(30) == '评论为主'
+    
+    def test_rewrite(self):
+        config = RewriteConfig(max_words=1000, strategy='评论为主')
+        rewriter = CommentRewriter(config)
+        
+        original = "测试原文内容"
+        comments = [
+            {'content': '很好的观点', 'sentiment': 0.8},
+            {'content': '有些不同意', 'sentiment': 0.3}
+        ]
+        analysis = {'title': '测试话题', 'summary': '测试摘要'}
+        
+        result = rewriter.rewrite(original, comments, analysis)
+        assert '测试话题' in result
+        assert '很好的观点' in result
 
 
 if __name__ == '__main__':
