@@ -1,0 +1,7 @@
+{
+  "proxies": [
+    "http://proxy1.example.com:8080",
+    "http://proxy2.example.com:8080"
+  ],
+  "updated_at": "2024-01-01T00:00:00"
+}

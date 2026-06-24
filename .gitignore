@@ -1,0 +1,52 @@
+# 敏感信息
+config/cookie.txt
+config/cookies.json
+config/proxies.json
+
+# 日志
+*.log
+scraper.log
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.Python
+env/
+venv/
+.venv/
+
+# 输出文件
+output.md
+test_output.md
+test_zhihu.md
+comments.json
+
+# 测试和调试文件
+test*.py
+check*.py
+debug*.py
+save*.py
+login*.py
+capture*.py
+parse*.py
+quick*.py
+smart*.py
+no_proxy*.py
+
+# 临时文件
+page_debug.html
+zhihu_page*.html
+debug_state.png
+after_click_comment.png
+api_requests.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 系统
+.DS_Store
+Thumbs.db

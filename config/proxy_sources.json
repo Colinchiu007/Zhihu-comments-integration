@@ -1,0 +1,8 @@
+{
+  "proxy_sources": [
+    "https://proxylist.geonode.com/api/proxy-list?limit=100&page=1&sort_by=lastChecked&sort_type=desc&protocols=http",
+    "https://proxylist.geonode.com/api/proxy-list?limit=100&page=2&sort_by=lastChecked&sort_type=desc&protocols=http",
+    "https://proxylist.geonode.com/api/proxy-list?limit=100&page=3&sort_by=lastChecked&sort_type=desc&protocols=http"
+  ],
+  "proxies": []
+}

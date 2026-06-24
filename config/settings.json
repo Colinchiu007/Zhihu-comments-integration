@@ -1,0 +1,55 @@
+{
+  "scraper": {
+    "request_delay": [3, 6],
+    "max_scrolls": 15,
+    "scroll_delay": [1, 3],
+    "user_agents": [
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15"
+    ],
+    "headless": false,
+    "viewport": {"width": 1920, "height": 1080},
+    "page_load_timeout": 30000,
+    "disable_images": false,
+    "disable_css": false
+  },
+  "proxy": {
+    "enabled": true,
+    "proxy_list": [],
+    "use_free_api": false,
+    "rotate_interval": 5,
+    "proxy_timeout": 10,
+    "refresh_interval_hours": 6
+  },
+  "ja_proxy": {
+    "enabled": false,
+    "key": "7C6FBDBA",
+    "num": 5
+  },
+  "xiaoxiang_proxy": {
+    "enabled": true,
+    "api_url": "https://api.xiaoxiangdaili.com/ip/get?appKey=1386969754732220416&appSecret=OTatCYNH&cnt=5&wt=text&method=http"
+  },
+  "limits": {
+    "max_comments": 500,
+    "daily_limit": 1000,
+    "cooldown_minutes": 30,
+    "max_retries": 3,
+    "retry_delay": [30, 60]
+  },
+  "detection": {
+    "enable_stealth": true,
+    "enable_verification_check": true,
+    "verification_wait_time": 30,
+    "humanize_behavior": true
+  },
+  "logging": {
+    "level": "INFO",
+    "file": "scraper.log",
+    "max_size_mb": 10,
+    "backup_count": 5
+  }
+}
