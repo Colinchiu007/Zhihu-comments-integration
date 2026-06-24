@@ -109,20 +109,37 @@ python main.py --url "https://zhuanlan.zhihu.com/p/123456789" --output result.md
 ## 项目结构
 
 ```
-├── scraper/          # 抓取模块
-│   ├── zhihu_scraper.py    # 主抓取器
-│   ├── anti_detection.py   # 反检测模块
-│   └── proxy_manager.py    # 代理管理器
-├── analyzer/         # 分析模块  
-├── generator/        # 生成模块
-├── config/           # 配置文件
-│   ├── settings.json       # 主配置
-│   ├── stopwords.txt       # 停用词
-│   └── proxies.example.json # 代理示例
-├── app.py            # 配置页面（Streamlit）
-├── start_config.py   # 配置页面启动脚本
-├── main.py          # 入口文件
-└── requirements.txt  # 依赖
+Zhihu-comments-integration/
+├── src/                        # 源代码目录
+│   ├── scraper/                # 抓取模块
+│   │   ├── __init__.py
+│   │   ├── zhihu_api.py        # 知乎API抓取器（推荐）
+│   │   ├── zhihu_scraper.py    # 浏览器抓取器（备用）
+│   │   ├── anti_detection.py   # 反检测模块
+│   │   └── proxy_manager.py    # 代理管理器
+│   ├── analyzer/               # 分析模块
+│   │   ├── __init__.py
+│   │   └── comment_analyzer.py # 评论分析器
+│   └── generator/              # 生成模块
+│       ├── __init__.py
+│       └── article_generator.py # 文章生成器
+├── config/                     # 配置文件
+│   ├── settings.json           # 主配置
+│   ├── cookie.txt              # 知乎Cookie（需自行获取）
+│   ├── stopwords.txt           # 停用词表
+│   └── proxy_sources.json      # 代理源配置
+├── scripts/                    # 脚本文件
+│   ├── app.py                  # Web配置界面
+│   └── start_config.py         # 配置界面启动器
+├── tests/                      # 测试目录
+│   ├── __init__.py
+│   └── test_core.py            # 核心功能测试
+├── docs/                       # 文档目录
+│   └── PRD.md                  # 产品需求文档
+├── main.py                     # 主入口
+├── pyproject.toml              # 项目配置
+├── requirements.txt            # 依赖列表
+└── README.md                   # 项目说明
 ```
 
 ## 配置页面功能

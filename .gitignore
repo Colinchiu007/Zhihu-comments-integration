@@ -3,15 +3,15 @@ config/cookie.txt
 config/cookies.json
 config/proxies.json
 
-# 日志
-*.log
-scraper.log
-
 # Python
-__pycache__/
 *.pyc
-*.pyo
-.Python
+__pycache__/
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+dist/
+build/
 env/
 venv/
 .venv/
@@ -22,24 +22,30 @@ test_output.md
 test_zhihu.md
 comments.json
 
-# 测试和调试文件
-test*.py
-check*.py
-debug*.py
-save*.py
-login*.py
-capture*.py
-parse*.py
-quick*.py
-smart*.py
-no_proxy*.py
-
 # 临时文件
+*.log
+scraper.log
 page_debug.html
 zhihu_page*.html
 debug_state.png
 after_click_comment.png
 api_requests.json
+
+# 调试脚本
+capture_api*.py
+check_*.py
+debug_*.py
+save_html*.py
+login_*.py
+test_cookie.py
+test_multi_proxy.py
+test_proxy*.py
+test_xx.py
+test.py
+no_proxy.py
+parse_html.py
+quick_login.py
+smart_login.py
 
 # IDE
 .vscode/
@@ -50,3 +56,6 @@ api_requests.json
 # 系统
 .DS_Store
 Thumbs.db
+
+# 启动脚本
+启动配置页面.bat

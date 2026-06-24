@@ -1,4 +1,10 @@
 import argparse
+import sys
+from pathlib import Path
+
+# 添加src到路径
+sys.path.insert(0, str(Path(__file__).parent / 'src'))
+
 from scraper.zhihu_api import ZhihuAPI
 from analyzer.comment_analyzer import CommentAnalyzer
 from generator.article_generator import ArticleGenerator
