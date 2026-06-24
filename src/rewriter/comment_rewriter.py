@@ -11,6 +11,7 @@ class RewriteConfig:
     strategy: str = 'auto'  # 改写策略: auto/评论为主/原文为主/均衡
     focus_threshold: int = 20  # 评论数阈值，低于此值时以原文为主
     max_duplicate_ratio: float = 0.5  # 与原文最大重复率（0-1）
+    use_llm: bool = False  # 是否使用LLM改写
 
 
 class CommentRewriter:
@@ -278,6 +279,22 @@ class CommentRewriter:
         Returns:
             改写后的文案
         """
+        # 如果配置使用LLM，优先使用LLM
+        if self.config.use_llm:
+            try:
+                from llm.llm_client import LLMClient
+                client = LLMClient()
+                if client.is_available():
+                    original_clean = self._clean_html(original)
+                    return client.rewrite_article(
+                        original_clean, comments,
+                        max_words=self.config.max_words,
+                        max_duplicate_ratio=self.config.max_duplicate_ratio
+                    )
+            except Exception as e:
+                print(f'LLM调用失败，使用模板改写: {e}')
+        
+        # 使用模板改写
         comment_count = len(comments)
         strategy = self._determine_strategy(comment_count)
         

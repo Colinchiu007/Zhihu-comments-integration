@@ -12,6 +12,7 @@ from analyzer.comment_analyzer import CommentAnalyzer
 from generator.article_generator import ArticleGenerator
 from rewriter.comment_rewriter import CommentRewriter, RewriteConfig
 from data.storage import DataStorage
+from llm.config_manager import LLMConfigManager, LLMConfig
 
 
 def sanitize_filename(title: str) -> str:
@@ -22,6 +23,63 @@ def sanitize_filename(title: str) -> str:
     if len(title) > 50:
         title = title[:50]
     return title.strip()
+
+
+def setup_llm():
+    """配置LLM设置"""
+    print('='*50)
+    print('LLM配置')
+    print('='*50)
+    
+    manager = LLMConfigManager()
+    config = manager.get_config()
+    
+    print(f'当前配置:')
+    print(f'  Provider: {config.provider}')
+    print(f'  Base URL: {config.base_url}')
+    print(f'  Model: {config.model}')
+    print(f'  API Key: {"已配置" if config.api_key else "未配置"}')
+    print()
+    
+    # 提供商选择
+    print('选择LLM提供商:')
+    print('1. SenseNova (默认)')
+    print('2. OpenAI')
+    print('3. 其他')
+    
+    choice = input('请选择 (1-3): ').strip() or '1'
+    
+    if choice == '1':
+        config.provider = 'sensenova'
+        config.base_url = 'https://token.sensenova.cn/v1'
+        config.model = 'sensenova-6.7-flash-lite'
+    elif choice == '2':
+        config.provider = 'openai'
+        config.base_url = 'https://api.openai.com/v1'
+        config.model = input('模型名称 (默认gpt-3.5-turbo): ').strip() or 'gpt-3.5-turbo'
+    else:
+        config.provider = input('Provider名称: ').strip()
+        config.base_url = input('Base URL: ').strip()
+        config.model = input('Model ID: ').strip()
+    
+    # API Key
+    api_key = input('API Key: ').strip()
+    if api_key:
+        config.api_key = api_key
+    
+    # 其他参数
+    temp = input(f'Temperature (默认{config.temperature}): ').strip()
+    if temp:
+        config.temperature = float(temp)
+    
+    max_tokens = input(f'Max Tokens (默认{config.max_tokens}): ').strip()
+    if max_tokens:
+        config.max_tokens = int(max_tokens)
+    
+    # 保存
+    manager.save_config(config)
+    print()
+    print('配置已保存！')
 
 
 def main():
@@ -36,10 +94,17 @@ def main():
                        default='auto', help='改写策略')
     parser.add_argument('--max-duplicate-ratio', type=float, default=0.5, 
                        help='与原文最大重复率（0-1，默认0.5）')
+    parser.add_argument('--use-llm', action='store_true', help='使用LLM改写')
+    parser.add_argument('--setup-llm', action='store_true', help='配置LLM设置')
     parser.add_argument('--save', action='store_true', help='保存原文和评论到文件')
     parser.add_argument('--data-dir', default='data', help='数据保存目录')
     
     args = parser.parse_args()
+    
+    # 处理LLM配置
+    if args.setup_llm:
+        setup_llm()
+        return
     
     print(f'目标: {args.url}')
     print(f'最大评论数: {args.max_comments}')
@@ -98,7 +163,8 @@ def main():
         config = RewriteConfig(
             max_words=args.max_words,
             strategy=args.strategy,
-            max_duplicate_ratio=args.max_duplicate_ratio
+            max_duplicate_ratio=args.max_duplicate_ratio,
+            use_llm=args.use_llm
         )
         rewriter = CommentRewriter(config)
         

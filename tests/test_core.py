@@ -12,6 +12,7 @@ from analyzer.comment_analyzer import CommentAnalyzer
 from generator.article_generator import ArticleGenerator
 from rewriter.comment_rewriter import CommentRewriter, RewriteConfig
 from data.storage import DataStorage
+from llm.config_manager import LLMConfigManager, LLMConfig
 
 
 class TestZhihuAPI:
@@ -234,6 +235,67 @@ class TestDataStorage:
         stats = storage.get_statistics()
         assert stats['total_answers'] == 1
         assert stats['total_comments'] == 5
+
+
+class TestLLMConfigManager:
+    def test_config_save_and_load(self):
+        """测试配置保存和加载"""
+        import tempfile
+        import shutil
+        
+        temp_dir = Path(tempfile.mkdtemp())
+        try:
+            manager = LLMConfigManager(str(temp_dir))
+            
+            # 创建测试配置
+            config = LLMConfig(
+                provider='test',
+                base_url='https://test.com/v1',
+                api_key='test-api-key-12345',
+                model='test-model'
+            )
+            
+            # 保存
+            manager.save_config(config)
+            
+            # 加载
+            loaded = manager.get_config()
+            
+            assert loaded.provider == 'test'
+            assert loaded.base_url == 'https://test.com/v1'
+            assert loaded.api_key == 'test-api-key-12345'
+            assert loaded.model == 'test-model'
+        finally:
+            shutil.rmtree(temp_dir)
+    
+    def test_config_encryption(self):
+        """测试配置加密"""
+        import tempfile
+        import shutil
+        
+        temp_dir = Path(tempfile.mkdtemp())
+        try:
+            manager = LLMConfigManager(str(temp_dir))
+            
+            # 创建测试配置
+            config = LLMConfig(api_key='secret-api-key')
+            manager.save_config(config)
+            
+            # 检查文件中的API Key是否加密
+            config_file = temp_dir / 'llm_config.json'
+            with open(config_file, 'r', encoding='utf-8') as f:
+                import json
+                data = json.load(f)
+            
+            # API Key应该被加密，不是明文
+            assert data['api_key'] != 'secret-api-key'
+            assert data['api_key'] != ''
+            
+            # 加载后应该能解密
+            loaded = manager.get_config()
+            assert loaded.api_key == 'secret-api-key'
+        finally:
+            shutil.rmtree(temp_dir)
 
 
 if __name__ == '__main__':

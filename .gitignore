@@ -2,6 +2,10 @@
 config/cookie.txt
 config/cookies.json
 config/proxies.json
+config/llm_config.json
+config/.key
+config/llm_config.json
+config/.key
 
 # 数据目录（仅排除根目录下的data）
 /data/
