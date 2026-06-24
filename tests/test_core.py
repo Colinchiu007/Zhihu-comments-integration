@@ -69,6 +69,7 @@ class TestCommentRewriter:
         assert config.max_words == 2000
         assert config.strategy == 'auto'
         assert config.focus_threshold == 20
+        assert config.max_duplicate_ratio == 0.5
     
     def test_determine_strategy(self):
         config = RewriteConfig(strategy='auto')
@@ -120,6 +121,48 @@ class TestCommentRewriter:
         assert '<p>' not in result
         assert '<b>' not in result
         assert '这是一段带HTML的文本' in result
+    
+    def test_calculate_duplicate_ratio(self):
+        """测试重复率计算"""
+        config = RewriteConfig()
+        rewriter = CommentRewriter(config)
+        
+        # 完全相同的文本
+        text1 = "这是一段测试文本"
+        text2 = "这是一段测试文本"
+        ratio = rewriter._calculate_duplicate_ratio(text1, text2)
+        assert ratio == 1.0
+        
+        # 完全不同的文本
+        text1 = "这是第一段文本"
+        text2 = "那是完全不同的内容"
+        ratio = rewriter._calculate_duplicate_ratio(text1, text2)
+        assert ratio < 0.3
+        
+        # 部分重复的文本
+        text1 = "人工智能是未来趋势"
+        text2 = "人工智能带来了很多问题"
+        ratio = rewriter._calculate_duplicate_ratio(text1, text2)
+        assert 0.2 < ratio < 0.8
+    
+    def test_rewrite_with_duplicate_control(self):
+        """测试带重复率控制的改写"""
+        config = RewriteConfig(max_words=1000, strategy='评论为主', max_duplicate_ratio=0.5)
+        rewriter = CommentRewriter(config)
+        
+        original = "人工智能是未来发展趋势，将改变我们的生活方式"
+        comments = [
+            {'content': 'AI确实很重要', 'sentiment': 0.7},
+            {'content': '但也带来了隐私问题', 'sentiment': 0.3}
+        ]
+        analysis = {'title': '人工智能讨论', 'summary': '讨论'}
+        
+        result = rewriter.rewrite(original, comments, analysis)
+        
+        # 检查结果包含评论内容
+        assert 'AI' in result or '人工智能' in result
+        # 检查结果不完全等于原文
+        assert result != original
 
 
 class TestDataStorage:

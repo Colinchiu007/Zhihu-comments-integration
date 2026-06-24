@@ -34,6 +34,8 @@ def main():
     parser.add_argument('--max-words', type=int, default=2000, help='改写文案最大字数')
     parser.add_argument('--strategy', choices=['auto', '评论为主', '原文为主', '均衡'], 
                        default='auto', help='改写策略')
+    parser.add_argument('--max-duplicate-ratio', type=float, default=0.5, 
+                       help='与原文最大重复率（0-1，默认0.5）')
     parser.add_argument('--save', action='store_true', help='保存原文和评论到文件')
     parser.add_argument('--data-dir', default='data', help='数据保存目录')
     
@@ -44,6 +46,7 @@ def main():
     if args.rewrite:
         print(f'改写策略: {args.strategy}')
         print(f'改写字数上限: {args.max_words}')
+        print(f'与原文最大重复率: {args.max_duplicate_ratio:.0%}')
     if args.save:
         print(f'数据保存目录: {args.data_dir}')
     print('='*50)
@@ -94,7 +97,8 @@ def main():
         print('\n[4/5] 生成改写文案...')
         config = RewriteConfig(
             max_words=args.max_words,
-            strategy=args.strategy
+            strategy=args.strategy,
+            max_duplicate_ratio=args.max_duplicate_ratio
         )
         rewriter = CommentRewriter(config)
         

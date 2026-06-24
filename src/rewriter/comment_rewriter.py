@@ -10,6 +10,7 @@ class RewriteConfig:
     max_words: int = 2000  # 最大字数
     strategy: str = 'auto'  # 改写策略: auto/评论为主/原文为主/均衡
     focus_threshold: int = 20  # 评论数阈值，低于此值时以原文为主
+    max_duplicate_ratio: float = 0.5  # 与原文最大重复率（0-1）
 
 
 class CommentRewriter:
@@ -22,6 +23,82 @@ class CommentRewriter:
         """清理HTML标签"""
         clean = re.compile('<.*?>')
         return re.sub(clean, '', text).strip()
+    
+    def _calculate_duplicate_ratio(self, text1: str, text2: str) -> float:
+        """
+        计算两段文本的重复率
+        
+        Args:
+            text1: 文本1
+            text2: 文本2
+            
+        Returns:
+            重复率（0-1）
+        """
+        if not text1 or not text2:
+            return 0.0
+        
+        # 提取中文字符和词语
+        def extract_tokens(text):
+            # 提取中文字符
+            chinese_chars = re.findall(r'[\u4e00-\u9fa5]', text)
+            # 提取2-4字词语
+            words = re.findall(r'[\u4e00-\u9fa5]{2,4}', text)
+            return set(chinese_chars + words)
+        
+        tokens1 = extract_tokens(text1)
+        tokens2 = extract_tokens(text2)
+        
+        if not tokens1 or not tokens2:
+            return 0.0
+        
+        # 计算交集
+        intersection = tokens1.intersection(tokens2)
+        
+        # 重复率 = 交集大小 / 较小集合大小
+        min_size = min(len(tokens1), len(tokens2))
+        if min_size == 0:
+            return 0.0
+        
+        return len(intersection) / min_size
+    
+    def _rewrite_to_reduce_duplicate(self, content: str, original: str, 
+                                    target_ratio: float) -> str:
+        """
+        重写内容以降低与原文的重复率
+        
+        Args:
+            content: 当前内容
+            original: 原文
+            target_ratio: 目标重复率
+            
+        Returns:
+            重写后的内容
+        """
+        current_ratio = self._calculate_duplicate_ratio(content, original)
+        
+        if current_ratio <= target_ratio:
+            return content
+        
+        # 提取原文的关键信息
+        original_tokens = set(re.findall(r'[\u4e00-\u9fa5]{2,}', original))
+        
+        # 提取内容中的重复部分
+        content_tokens = set(re.findall(r'[\u4e00-\u9fa5]{2,}', content))
+        duplicate_tokens = content_tokens.intersection(original_tokens)
+        
+        # 替换策略：删除部分重复内容，添加评论观点
+        rewritten = content
+        
+        # 删除部分重复的句子
+        sentences = re.split(r'[。！？]', original)
+        for sentence in sentences:
+            if len(sentence) > 5 and sentence in rewritten:
+                # 只保留句子的前几个字
+                shortened = sentence[:3] + '...'
+                rewritten = rewritten.replace(sentence, shortened, 1)
+        
+        return rewritten
     
     def _determine_strategy(self, comment_count: int) -> str:
         """根据评论数量确定改写策略"""
@@ -117,6 +194,10 @@ class CommentRewriter:
             
             if original:
                 original_clean = self._clean_html(original)
+                # 控制与原文的重复率
+                if len(original_clean) > 200:
+                    # 只取部分内容，降低重复率
+                    original_clean = original_clean[:200] + '...'
                 lines.append(original_clean)
                 lines.append('')
             
@@ -137,8 +218,9 @@ class CommentRewriter:
             
             if original:
                 original_clean = self._clean_html(original)
-                if len(original_clean) > 300:
-                    original_clean = original_clean[:300] + '...'
+                # 控制与原文的重复率，最多取150字
+                if len(original_clean) > 150:
+                    original_clean = original_clean[:150] + '...'
                 lines.append(original_clean)
                 lines.append('')
             
@@ -200,6 +282,17 @@ class CommentRewriter:
         strategy = self._determine_strategy(comment_count)
         
         result = self._generate_rewrite(original, comments, analysis, strategy)
+        
+        # 检查与原文的重复率
+        if original and self.config.max_duplicate_ratio < 1.0:
+            original_clean = self._clean_html(original)
+            current_ratio = self._calculate_duplicate_ratio(result, original_clean)
+            
+            # 如果重复率超过限制，进行重写
+            if current_ratio > self.config.max_duplicate_ratio:
+                result = self._rewrite_to_reduce_duplicate(
+                    result, original_clean, self.config.max_duplicate_ratio
+                )
         
         return result
 
