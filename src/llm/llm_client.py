@@ -52,7 +52,21 @@ class LLMClient:
             
             if response.status_code == 200:
                 result = response.json()
-                return result['choices'][0]['message']['content']
+                message = result['choices'][0]['message']
+                
+                # 获取content和reasoning
+                content = message.get('content', '')
+                reasoning = message.get('reasoning', '')
+                
+                # 优先使用content
+                if content and len(content) > 50:
+                    return content.strip()
+                
+                # 如果reasoning存在，返回完整内容
+                if reasoning:
+                    return reasoning.strip()
+                
+                return ''
             else:
                 print(f'LLM API错误: {response.status_code} {response.text[:200]}')
                 return ''
@@ -85,7 +99,7 @@ class LLMClient:
 3. 风格：保持客观、专业
 4. 结构：包含标题、主要观点、总结
 
-请直接输出改写后的文章，不要包含任何解释或说明。"""
+重要：直接输出改写后的文章，不要输出任何思考过程、分析步骤或解释说明。只输出最终的文章内容。"""
         
         prompt = f"""请改写以下文章：
 

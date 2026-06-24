@@ -50,6 +50,9 @@ class LLMConfigManager:
     
     def _encrypt(self, text: str) -> str:
         """加密文本"""
+        if not self._encryption_key:
+            return text
+        
         # 使用XOR加密
         key_bytes = self._encryption_key.encode('utf-8')
         text_bytes = text.encode('utf-8')
@@ -59,6 +62,9 @@ class LLMConfigManager:
     
     def _decrypt(self, encrypted_text: str) -> str:
         """解密文本"""
+        if not self._encryption_key:
+            return encrypted_text
+        
         try:
             key_bytes = self._encryption_key.encode('utf-8')
             encrypted_bytes = base64.b64decode(encrypted_text)
@@ -66,7 +72,7 @@ class LLMConfigManager:
             decrypted = bytes(a ^ b for a, b in zip(encrypted_bytes, key_bytes * (len(encrypted_bytes) // len(key_bytes) + 1)))
             return decrypted.decode('utf-8')
         except:
-            return ''
+            return encrypted_text
     
     def save_config(self, config: LLMConfig) -> None:
         """保存配置（API Key加密）"""
