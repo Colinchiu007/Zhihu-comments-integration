@@ -92,14 +92,21 @@ class ZhihuAPI:
                 break
             
             for item in data:
+                content = item.get('content', '')
+                # 清理HTML标签
+                import re
+                content_clean = re.sub(r'<.*?>', '', content).strip()
+                
                 comment = {
                     'comment_id': item.get('id', ''),
                     'author': item.get('author', {}).get('name', '匿名用户'),
                     'author_url': item.get('author', {}).get('url', ''),
-                    'content': item.get('content', ''),
+                    'content': content,
+                    'content_clean': content_clean,
                     'likes': item.get('vote_count', 0),
                     'created_time': item.get('created_time', 0),
-                    'reply_count': item.get('reply_count', 0)
+                    'reply_count': item.get('reply_count', 0),
+                    'sentiment': self._analyze_sentiment(content_clean)
                 }
                 all_comments.append(comment)
             
@@ -110,6 +117,27 @@ class ZhihuAPI:
                 break
         
         return all_comments[:max_comments]
+    
+    def _analyze_sentiment(self, text: str) -> float:
+        """分析文本情感（简单规则）"""
+        if not text:
+            return 0.5
+        
+        # 简单的正面/负面关键词
+        positive_words = ['支持', '赞同', '好', '棒', '优秀', '点赞', '认同', '理解']
+        negative_words = ['反对', '不支持', '批评', '质疑', '问题', '不好', '错']
+        
+        text_lower = text.lower()
+        
+        positive_count = sum(1 for word in positive_words if word in text_lower)
+        negative_count = sum(1 for word in negative_words if word in text_lower)
+        
+        if positive_count > negative_count:
+            return 0.7
+        elif negative_count > positive_count:
+            return 0.3
+        else:
+            return 0.5
     
     def scrape(self, url: str, max_comments: int = 100, include_original: bool = False) -> Dict[str, Any]:
         """
