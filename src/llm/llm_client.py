@@ -38,26 +38,17 @@ class LLMClient:
                 f'{self.config.base_url}/chat/completions',
                 headers=headers,
                 json=data,
-                timeout=60
+                timeout=180
             )
             
             if response.status_code == 200:
                 result = response.json()
                 message = result['choices'][0]['message']
                 
-                # 获取content和reasoning
-                content = message.get('content', '')
-                reasoning = message.get('reasoning', '')
+                # 获取content
+                content = message.get('content', '') or ''
                 
-                # 优先使用content
-                if content and len(content) > 50:
-                    return content.strip()
-                
-                # 如果reasoning存在，返回完整内容
-                if reasoning:
-                    return reasoning.strip()
-                
-                return ''
+                return content.strip() if content else ''
             else:
                 print(f'LLM API错误: {response.status_code} {response.text[:200]}')
                 return ''
