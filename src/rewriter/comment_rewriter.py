@@ -21,85 +21,20 @@ class CommentRewriter:
         self.config = config or RewriteConfig()
     
     def _clean_html(self, text: str) -> str:
-        """清理HTML标签"""
+        """清理HTML标签和特殊字符"""
+        if not text:
+            return ''
+        # 移除HTML标签
         clean = re.compile('<.*?>')
-        return re.sub(clean, '', text).strip()
-    
-    def _calculate_duplicate_ratio(self, text1: str, text2: str) -> float:
-        """
-        计算两段文本的重复率
-        
-        Args:
-            text1: 文本1
-            text2: 文本2
-            
-        Returns:
-            重复率（0-1）
-        """
-        if not text1 or not text2:
-            return 0.0
-        
-        # 提取中文字符和词语
-        def extract_tokens(text):
-            # 提取中文字符
-            chinese_chars = re.findall(r'[\u4e00-\u9fa5]', text)
-            # 提取2-4字词语
-            words = re.findall(r'[\u4e00-\u9fa5]{2,4}', text)
-            return set(chinese_chars + words)
-        
-        tokens1 = extract_tokens(text1)
-        tokens2 = extract_tokens(text2)
-        
-        if not tokens1 or not tokens2:
-            return 0.0
-        
-        # 计算交集
-        intersection = tokens1.intersection(tokens2)
-        
-        # 重复率 = 交集大小 / 较小集合大小
-        min_size = min(len(tokens1), len(tokens2))
-        if min_size == 0:
-            return 0.0
-        
-        return len(intersection) / min_size
-    
-    def _rewrite_to_reduce_duplicate(self, content: str, original: str, 
-                                    target_ratio: float) -> str:
-        """
-        重写内容以降低与原文的重复率
-        
-        Args:
-            content: 当前内容
-            original: 原文
-            target_ratio: 目标重复率
-            
-        Returns:
-            重写后的内容
-        """
-        current_ratio = self._calculate_duplicate_ratio(content, original)
-        
-        if current_ratio <= target_ratio:
-            return content
-        
-        # 提取原文的关键信息
-        original_tokens = set(re.findall(r'[\u4e00-\u9fa5]{2,}', original))
-        
-        # 提取内容中的重复部分
-        content_tokens = set(re.findall(r'[\u4e00-\u9fa5]{2,}', content))
-        duplicate_tokens = content_tokens.intersection(original_tokens)
-        
-        # 替换策略：删除部分重复内容，添加评论观点
-        rewritten = content
-        
-        # 删除部分重复的句子
-        sentences = re.split(r'[。！？]', original)
-        for sentence in sentences:
-            if len(sentence) > 5 and sentence in rewritten:
-                # 只保留句子的前几个字
-                shortened = sentence[:3] + '...'
-                rewritten = rewritten.replace(sentence, shortened, 1)
-        
-        return rewritten
+        text = re.sub(clean, '', text)
+        # 移除表情符号和特殊字符
+        text = re.sub(r'\[.*?\]', '', text)
+        text = re.sub(r'[\U0001F600-\U0001F64F]', '', text)
+        text = re.sub(r'[\U0001F300-\U0001F5FF]', '', text)
+        text = re.sub(r'[\U0001F680-\U0001F6FF]', '', text)
+        # 清理多余空格
+        text = re.sub(r'\s+', ' ', text)
+        return text.strip()
     
     def _determine_strategy(self, comment_count: int) -> str:
         """根据评论数量确定改写策略"""
@@ -122,7 +57,7 @@ class CommentRewriter:
         
         for comment in comments:
             content = self._clean_html(comment.get('content', ''))
-            if not content:
+            if not content or len(content) < 5:
                 continue
                 
             sentiment = comment.get('sentiment', 0.5)
@@ -154,90 +89,204 @@ class CommentRewriter:
         except:
             return []
     
+    def _calculate_duplicate_ratio(self, text1: str, text2: str) -> float:
+        """计算两段文本的重复率"""
+        if not text1 or not text2:
+            return 0.0
+        
+        # 提取中文字符和词语
+        def extract_tokens(text):
+            chinese_chars = re.findall(r'[\u4e00-\u9fa5]', text)
+            words = re.findall(r'[\u4e00-\u9fa5]{2,4}', text)
+            return set(chinese_chars + words)
+        
+        tokens1 = extract_tokens(text1)
+        tokens2 = extract_tokens(text2)
+        
+        if not tokens1 or not tokens2:
+            return 0.0
+        
+        # 计算交集
+        intersection = tokens1.intersection(tokens2)
+        
+        # 重复率 = 交集大小 / 较小集合大小
+        min_size = min(len(tokens1), len(tokens2))
+        if min_size == 0:
+            return 0.0
+        
+        return len(intersection) / min_size
+    
+    def _rewrite_to_reduce_duplicate(self, content: str, original: str, 
+                                    target_ratio: float) -> str:
+        """重写内容以降低与原文的重复率"""
+        current_ratio = self._calculate_duplicate_ratio(content, original)
+        
+        if current_ratio <= target_ratio:
+            return content
+        
+        # 如果重复率太高，保留前半部分，删除重复的后半部分
+        lines = content.split('\n')
+        result_lines = []
+        char_count = 0
+        
+        for line in lines:
+            if char_count + len(line) > self.config.max_words * 0.7:
+                break
+            result_lines.append(line)
+            char_count += len(line) + 1
+        
+        return '\n'.join(result_lines)
+    
+    def _summarize_comments(self, comments: List[str], max_items: int = 3) -> str:
+        """将多条评论整合成摘要"""
+        if not comments:
+            return ''
+        
+        # 取最重要的几条
+        selected = comments[:max_items]
+        
+        # 整合成连贯的段落
+        parts = []
+        for i, comment in enumerate(selected):
+            # 截取关键部分
+            if len(comment) > 80:
+                comment = comment[:80] + '...'
+            parts.append(comment)
+        
+        return '；'.join(parts)
+    
     def _generate_rewrite(self, original: str, comments: List[Dict[str, Any]], 
                          analysis: Dict[str, Any], strategy: str) -> str:
         """生成改写文案"""
         key_points = self._extract_key_points(comments)
         comment_count = len(comments)
         
-        # 获取标题
+        # 获取标题（优先使用原文标题）
         title = analysis.get('title', '话题讨论')
+        if not title or title == '话题讨论':
+            # 从原文中提取标题
+            original_clean = self._clean_html(original) if original else ''
+            if original_clean:
+                # 取第一句话作为标题
+                first_sentence = re.split(r'[。！？]', original_clean)[0]
+                if len(first_sentence) > 5 and len(first_sentence) < 50:
+                    title = first_sentence
+        
         summary = analysis.get('summary', '')
         
-        # 根据策略生成正文
+        # 清理原文
+        original_clean = self._clean_html(original) if original else ''
+        
+        # 构建文章
         lines = []
         
+        # 标题
+        lines.append(f'# {title}')
+        lines.append('')
+        
+        # 引言
+        lines.append('## 引言')
+        lines.append('')
+        if original_clean:
+            # 提取原文核心观点（前150字作为摘要）
+            intro = original_clean[:150] + '...' if len(original_clean) > 150 else original_clean
+            lines.append(intro)
+        else:
+            lines.append(f'近期，关于"{title}"的讨论引发了广泛关注。')
+        lines.append('')
+        
+        # 主体：网友评论分析
+        lines.append('## 网友观点分析')
+        lines.append('')
+        
         if strategy == '评论为主':
-            lines.append(f'## {title}')
-            lines.append('')
-            
+            # 以评论为主
             if key_points['positive']:
-                lines.append('多数网友对此持肯定态度：')
+                lines.append('**积极观点：**')
                 lines.append('')
-                for point in key_points['positive']:
-                    lines.append(f'- {point}')
-                lines.append('')
-            
-            if key_points['negative']:
-                lines.append('也有部分网友提出不同看法：')
-                lines.append('')
-                for point in key_points['negative']:
-                    lines.append(f'- {point}')
-                lines.append('')
-            
-            if key_points['themes']:
-                lines.append(f'讨论主要围绕{"、".join(key_points["themes"])}展开。')
-                lines.append('')
-        
-        elif strategy == '原文为主':
-            lines.append(f'## {title}')
-            lines.append('')
-            
-            if original:
-                original_clean = self._clean_html(original)
-                # 控制与原文的重复率
-                if len(original_clean) > 200:
-                    # 只取部分内容，降低重复率
-                    original_clean = original_clean[:200] + '...'
-                lines.append(original_clean)
-                lines.append('')
-            
-            if comments:
-                lines.append('---')
-                lines.append('')
-                lines.append('**网友评论精选：**')
-                lines.append('')
-                for comment in comments[:10]:
-                    content = self._clean_html(comment.get('content', ''))
-                    if content:
-                        lines.append(f'> {content}')
-                        lines.append('')
-        
-        else:  # 均衡
-            lines.append(f'## {title}')
-            lines.append('')
-            
-            if original:
-                original_clean = self._clean_html(original)
-                # 控制与原文的重复率，最多取150字
-                if len(original_clean) > 150:
-                    original_clean = original_clean[:150] + '...'
-                lines.append(original_clean)
-                lines.append('')
-            
-            if key_points['positive']:
-                lines.append('**赞同的声音：**')
                 for point in key_points['positive'][:3]:
                     lines.append(f'- {point}')
                 lines.append('')
             
             if key_points['negative']:
-                lines.append('**反对的声音：**')
+                lines.append('**质疑声音：**')
+                lines.append('')
                 for point in key_points['negative'][:3]:
                     lines.append(f'- {point}')
                 lines.append('')
+            
+            if key_points['neutral']:
+                lines.append('**中立观点：**')
+                lines.append('')
+                for point in key_points['neutral'][:2]:
+                    lines.append(f'- {point}')
+                lines.append('')
         
-        # 字数控制 - 在生成时就控制，不截断
+        elif strategy == '原文为主':
+            # 以原文为主，但跳过引言部分（前150字）
+            if original_clean and len(original_clean) > 150:
+                # 从第150字开始，找到下一个完整的句子开头
+                remaining = original_clean[150:]
+                
+                # 找到第一个完整句子的开头
+                sentence_starters = ['而', '但', '然而', '同时', '另一方面', '此外', '另外']
+                found_start = False
+                
+                for starter in sentence_starters:
+                    idx = remaining.find(starter)
+                    if idx >= 0 and idx < 50:
+                        remaining = remaining[idx:]
+                        found_start = True
+                        break
+                
+                if not found_start:
+                    # 如果没找到连接词，找第一个句号后的位置
+                    for i, char in enumerate(remaining):
+                        if char in '。！？' and i > 0:
+                            remaining = remaining[i+1:]
+                            break
+                
+                if remaining.strip():
+                    lines.append(remaining.strip())
+                    lines.append('')
+            
+            if comments:
+                lines.append('**网友评论精选：**')
+                lines.append('')
+                for comment in comments[:5]:
+                    content = self._clean_html(comment.get('content', ''))
+                    if content and len(content) > 10:
+                        lines.append(f'> {content}')
+                        lines.append('')
+        
+        else:  # 均衡
+            if original_clean:
+                intro_len = min(150, len(original_clean) // 2)
+                lines.append(original_clean[:intro_len] + '...')
+                lines.append('')
+            
+            if key_points['positive']:
+                lines.append('**正面声音：**')
+                for point in key_points['positive'][:2]:
+                    lines.append(f'- {point}')
+                lines.append('')
+            
+            if key_points['negative']:
+                lines.append('**反面思考：**')
+                for point in key_points['negative'][:2]:
+                    lines.append(f'- {point}')
+                lines.append('')
+        
+        # 总结
+        lines.append('## 总结')
+        lines.append('')
+        if summary:
+            lines.append(summary)
+        else:
+            lines.append('该话题引发了广泛讨论，网友们从不同角度表达了自己的看法。')
+        lines.append('')
+        
+        # 字数控制
         result = '\n'.join(lines)
         
         # 如果超长，精简内容
@@ -250,7 +299,6 @@ class CommentRewriter:
         """精简内容到指定字数"""
         result = '\n'.join(lines)
         
-        # 如果还是超长，逐步精简
         if len(result) > max_words:
             # 保留标题和前半部分
             trimmed_lines = []
@@ -312,23 +360,3 @@ class CommentRewriter:
                 )
         
         return result
-
-
-if __name__ == '__main__':
-    # 测试
-    config = RewriteConfig(max_words=1000, strategy='auto')
-    rewriter = CommentRewriter(config)
-    
-    original = "这是一篇关于人工智能发展的文章..."
-    comments = [
-        {'content': '写得很好，人工智能确实是未来趋势', 'sentiment': 0.8},
-        {'content': '但是AI也带来了很多问题', 'sentiment': 0.3},
-        {'content': '中立看待，技术本身无罪', 'sentiment': 0.5}
-    ]
-    analysis = {
-        'title': '人工智能发展',
-        'summary': '共3条评论，整体情感中立'
-    }
-    
-    result = rewriter.rewrite(original, comments, analysis)
-    print(result)

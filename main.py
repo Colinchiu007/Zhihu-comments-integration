@@ -119,11 +119,13 @@ def main():
     # 1. 抓取内容
     print('\n[1/5] 抓取内容...')
     api = ZhihuAPI()
-    data = api.scrape(args.url, max_comments=args.max_comments, include_original=args.save)
+    # 如果需要改写，也要获取原文
+    include_original = args.save or args.rewrite
+    data = api.scrape(args.url, max_comments=args.max_comments, include_original=include_original)
     comments = data.get('comments', [])
     print(f'  抓取到 {len(comments)} 条评论')
     
-    if args.save and data.get('original'):
+    if data.get('original'):
         print(f'  已获取原文: {data["original"].get("question_title", "")[:30]}...')
     
     if not comments:
