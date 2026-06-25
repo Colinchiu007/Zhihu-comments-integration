@@ -31,16 +31,16 @@ class CommentRewriter:
         return text.strip()
     
     def _extract_opinions(self, comments: List[Dict[str, Any]]) -> List[str]:
-        """提取评论观点，清理格式"""
+        """提取评论观点，清理格式并添加标点"""
         opinions = []
         for comment in comments:
             content = self._clean_html(comment.get('content', ''))
             if content and len(content) > 10:
-                # 截取关键部分
-                if len(content) > 150:
-                    content = content[:150] + '...'
+                # 确保有标点结尾
+                if not content.endswith(('。', '！', '？', '...', '…')):
+                    content = content + '。'
                 opinions.append(content)
-        return opinions[:8]
+        return opinions[:10]
     
     def _generate_article(self, original: str, comments: List[Dict[str, Any]], 
                          analysis: Dict[str, Any]) -> str:
@@ -54,7 +54,6 @@ class CommentRewriter:
         
         # 开头：引入话题
         if original_clean:
-            # 从原文提取核心，重新组织语言
             intro = self._create_intro(original_clean, title)
             article.append(intro)
         else:
@@ -64,7 +63,6 @@ class CommentRewriter:
         
         # 主体：网友观点整合
         if opinions:
-            # 用更自然的过渡
             transitions = [
                 '网友们对此议论纷纷：',
                 '大家怎么看呢？',
@@ -78,8 +76,20 @@ class CommentRewriter:
                 article.append(f'{opinion}')
                 article.append('')
         
+        # 补充：从原文提取更多内容
+        if original_clean and len(original_clean) > 300:
+            # 提取原文后半部分
+            second_half = original_clean[200:500]
+            if second_half:
+                article.append('此外，原文还提到：')
+                article.append('')
+                article.append(second_half + '。' if not second_half.endswith('。') else second_half)
+                article.append('')
+        
         # 结尾：总结
-        article.append(f'关于这个话题，大家看法不一，这也正常。你怎么看？')
+        article.append(f'关于这个话题，大家看法不一，这也正常。')
+        article.append('')
+        article.append('你怎么看？欢迎在评论区留言讨论。')
         
         return '\n'.join(article)
     
