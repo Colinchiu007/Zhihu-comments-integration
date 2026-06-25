@@ -13,6 +13,7 @@ from generator.article_generator import ArticleGenerator
 from rewriter.comment_rewriter import CommentRewriter, RewriteConfig
 from data.storage import DataStorage
 from llm.config_manager import LLMConfigManager, LLMConfig
+from llm.presets import MODEL_PRESETS, list_presets
 
 
 def sanitize_filename(title: str) -> str:
@@ -41,40 +42,40 @@ def setup_llm():
     print(f'  API Key: {"已配置" if config.api_key else "未配置"}')
     print()
     
-    # 提供商选择
-    print('选择LLM提供商:')
-    print('1. SenseNova (默认)')
-    print('2. OpenAI')
-    print('3. 其他')
+    # 显示可用模型
+    print('可用模型预设:')
+    presets = list_presets()
+    for i, (name, desc) in enumerate(presets.items(), 1):
+        print(f'  {i}. {name} - {desc}')
+    print(f'  {len(presets) + 1}. 自定义')
     
-    choice = input('请选择 (1-3): ').strip() or '1'
+    choice = input(f'请选择 (1-{len(presets) + 1}): ').strip()
     
-    if choice == '1':
-        config.provider = 'sensenova'
-        config.base_url = 'https://token.sensenova.cn/v1'
-        config.model = 'sensenova-6.7-flash-lite'
-    elif choice == '2':
-        config.provider = 'openai'
-        config.base_url = 'https://api.openai.com/v1'
-        config.model = input('模型名称 (默认gpt-3.5-turbo): ').strip() or 'gpt-3.5-turbo'
-    else:
-        config.provider = input('Provider名称: ').strip()
-        config.base_url = input('Base URL: ').strip()
-        config.model = input('Model ID: ').strip()
-    
-    # API Key
-    api_key = input('API Key: ').strip()
-    if api_key:
-        config.api_key = api_key
-    
-    # 其他参数
-    temp = input(f'Temperature (默认{config.temperature}): ').strip()
-    if temp:
-        config.temperature = float(temp)
-    
-    max_tokens = input(f'Max Tokens (默认{config.max_tokens}): ').strip()
-    if max_tokens:
-        config.max_tokens = int(max_tokens)
+    try:
+        choice_idx = int(choice) - 1
+        preset_names = list(presets.keys())
+        
+        if 0 <= choice_idx < len(preset_names):
+            preset_name = preset_names[choice_idx]
+            api_key = input(f'{presets[preset_name]}的API Key: ').strip()
+            
+            if api_key:
+                model = input(f'模型ID (可选，回车使用默认): ').strip() or None
+                config = manager.setup_from_preset(preset_name, api_key, model)
+                print()
+                print('配置已保存！')
+                return
+        else:
+            # 自定义配置
+            config.provider = input('Provider名称: ').strip()
+            config.base_url = input('Base URL: ').strip()
+            config.model = input('Model ID: ').strip()
+            api_key = input('API Key: ').strip()
+            if api_key:
+                config.api_key = api_key
+    except ValueError:
+        print('输入无效')
+        return
     
     # 保存
     manager.save_config(config)

@@ -15,16 +15,7 @@ class LLMClient:
         self.config = config
     
     def generate(self, prompt: str, system_prompt: str = '') -> str:
-        """
-        生成文本
-        
-        Args:
-            prompt: 用户提示
-            system_prompt: 系统提示
-            
-        Returns:
-            生成的文本
-        """
+        """生成文本"""
         headers = {
             'Content-Type': 'application/json',
             'Authorization': f'Bearer {self.config.api_key}'
@@ -77,19 +68,7 @@ class LLMClient:
     def rewrite_article(self, original: str, comments: list, 
                        max_words: int = 2000, 
                        max_duplicate_ratio: float = 0.5) -> str:
-        """
-        改写文章
-        
-        Args:
-            original: 原文
-            comments: 评论列表
-            max_words: 最大字数
-            max_duplicate_ratio: 最大重复率
-            
-        Returns:
-            改写后的文章
-        """
-        # 构建评论摘要
+        """改写文章"""
         comments_text = '\n'.join([f'- {c.get("content", "")[:100]}' for c in comments[:10]])
         
         system_prompt = f"""你是一个专业的内容改写助手。请根据以下要求改写文章：
@@ -97,7 +76,7 @@ class LLMClient:
 1. 字数限制：不超过{max_words}字
 2. 与原文重复率：不超过{int(max_duplicate_ratio * 100)}%
 3. 风格：保持客观、专业
-4. 结构：包含标题、主要观点、总结
+4. 结构：完整的文章，包含开头、主体、结尾
 
 重要：直接输出改写后的文章，不要输出任何思考过程、分析步骤或解释说明。只输出最终的文章内容。"""
         
@@ -119,7 +98,7 @@ class LLMClient:
             return False
         
         try:
-            result = self.generate('测试', '请回复"OK"')
+            result = self.generate('测试', '请回复OK')
             return 'OK' in result
         except:
             return False

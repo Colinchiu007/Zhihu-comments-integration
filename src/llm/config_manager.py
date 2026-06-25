@@ -1,7 +1,6 @@
 """LLM配置管理器 - 加密存储API Key"""
 import json
 import base64
-import hashlib
 from pathlib import Path
 from typing import Dict, Any, Optional
 from dataclasses import dataclass
@@ -34,15 +33,13 @@ class LLMConfigManager:
         if key_file.exists():
             return key_file.read_text(encoding='utf-8').strip()
         
-        # 创建新密钥
         import secrets
         key = secrets.token_hex(16)
         key_file.write_text(key, encoding='utf-8')
         
-        # 设置文件隐藏属性（Windows）
         try:
             import ctypes
-            ctypes.windll.kernel32.SetFileAttributesW(str(key_file), 2)  # FILE_ATTRIBUTE_HIDDEN
+            ctypes.windll.kernel32.SetFileAttributesW(str(key_file), 2)
         except:
             pass
         
@@ -53,7 +50,6 @@ class LLMConfigManager:
         if not self._encryption_key:
             return text
         
-        # 使用XOR加密
         key_bytes = self._encryption_key.encode('utf-8')
         text_bytes = text.encode('utf-8')
         
@@ -75,11 +71,11 @@ class LLMConfigManager:
             return encrypted_text
     
     def save_config(self, config: LLMConfig) -> None:
-        """保存配置（API Key加密）"""
+        """保存配置"""
         data = {
             'provider': config.provider,
             'base_url': config.base_url,
-            'api_key': self._encrypt(config.api_key),
+            'api_key': self._encrypt(config.api_key) if config.api_key else '',
             'model': config.model,
             'temperature': config.temperature,
             'max_tokens': config.max_tokens
@@ -89,7 +85,7 @@ class LLMConfigManager:
             json.dump(data, f, ensure_ascii=False, indent=2)
     
     def load_config(self) -> LLMConfig:
-        """加载配置（API Key解密）"""
+        """加载配置"""
         if not self.config_file.exists():
             return LLMConfig()
         
@@ -109,16 +105,31 @@ class LLMConfigManager:
             return LLMConfig()
     
     def get_config(self) -> LLMConfig:
-        """获取配置"""
         return self.load_config()
     
     def update_config(self, **kwargs) -> LLMConfig:
-        """更新配置"""
         config = self.load_config()
         
         for key, value in kwargs.items():
             if hasattr(config, key):
                 setattr(config, key, value)
+        
+        self.save_config(config)
+        return config
+    
+    def setup_from_preset(self, preset_name: str, api_key: str, 
+                         model: str = None) -> LLMConfig:
+        """从预设模型设置配置"""
+        from .presets import get_preset
+        
+        preset = get_preset(preset_name)
+        
+        config = LLMConfig(
+            provider=preset.name,
+            base_url=preset.base_url,
+            api_key=api_key,
+            model=model or preset.model
+        )
         
         self.save_config(config)
         return config
